@@ -116,6 +116,14 @@ describe("grepDocuments: literal matching", () => {
     expect(outcome.hits[0].file_path).toBe("auth/tokens.md");
   });
 
+  test("searchDocuments narrows by path_glob", () => {
+    // Terms unique to one doc — a term in every doc has non-positive BM25 IDF here
+    expect(store.searchDocuments("health").map((r) => r.doc_id)).toEqual(["docs:deploy"]);
+    expect(store.searchDocuments("health", { path_glob: "deploy/**" }).map((r) => r.doc_id)).toEqual(["docs:deploy"]);
+    expect(store.searchDocuments("health", { path_glob: "auth/**" })).toEqual([]);
+    expect(store.searchDocuments("rotate", { path_glob: "auth/**" }).map((r) => r.doc_id)).toEqual(["docs:auth"]);
+  });
+
   test("narrows by facet filter", () => {
     const outcome = store.grepDocuments({
       pattern: "--force",

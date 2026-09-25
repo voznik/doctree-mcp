@@ -81,6 +81,7 @@ async function main() {
 
   Bun.serve({
     port: PORT,
+    hostname: process.env.HOST, // unset → Bun default (all interfaces)
     async fetch(req) {
       const url = new URL(req.url);
 

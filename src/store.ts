@@ -490,6 +490,7 @@ export class DocumentStore {
       doc_id?: string;
       collection?: string;
       filters?: Record<string, string | string[]>;
+      path_glob?: string;
     }
   ): SearchResult[] {
     const queryTerms = tokenize(query).map(stem).filter((t) => t.length >= 2);
@@ -517,6 +518,18 @@ export class DocumentStore {
       } else {
         filterWhitelist = new Set(colDocs);
       }
+    }
+
+    // Path scoping — same Bun.Glob semantics as grepDocuments' path_glob
+    if (options?.path_glob) {
+      const globMatcher = new Bun.Glob(options.path_glob);
+      const pathDocs = new Set<string>();
+      for (const doc of this.docs.values()) {
+        if (filterWhitelist && !filterWhitelist.has(doc.meta.doc_id)) continue;
+        if (globMatcher.match(doc.meta.file_path)) pathDocs.add(doc.meta.doc_id);
+      }
+      if (pathDocs.size === 0) return [];
+      filterWhitelist = pathDocs;
     }
 
     // Accumulate BM25 scores per node

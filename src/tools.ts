@@ -8,7 +8,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { DocumentStore } from "./store";
-import { formatSearchResults } from "./search-formatter";
+import { formatSearchResults, capOutput, maxOutputChars, envInt } from "./search-formatter";
 import type { WikiOptions } from "./curator";
 import type { GrepOutcome } from "./types";
 
@@ -213,15 +213,19 @@ export function registerTools(
         .describe(
           'Facet filters to narrow results. Keys are frontmatter fields (e.g., "type", "tags", "category"). Values can be a string or array of strings. Example: { "type": "runbook", "tags": ["auth", "jwt"] }'
         ),
+      path_glob: z
+        .string()
+        .optional()
+        .describe("Glob over the file_path to scope the search, e.g. 'references/traefik/**' or 'adr/*.md'"),
       limit: z
         .number()
         .min(1)
         .max(50)
-        .default(15)
+        .default(Math.min(50, Math.max(1, envInt("DOCTREE_SEARCH_LIMIT", 15))))
         .describe("Max results"),
     },
-    async ({ query, doc_id, filters, limit }) => {
-      const results = store.searchDocuments(query, { limit, doc_id, filters });
+    async ({ query, doc_id, filters, path_glob, limit }) => {
+      const results = store.searchDocuments(query, { limit, doc_id, filters, path_glob });
       const formatted = formatSearchResults(results, store, query);
 
       return {
@@ -380,7 +384,7 @@ export function registerTools(
         content: [
           {
             type: "text" as const,
-            text: formatted,
+            text: capOutput(result.nodes, formatted, maxOutputChars()),
           },
         ],
       };
@@ -424,7 +428,7 @@ export function registerTools(
         content: [
           {
             type: "text" as const,
-            text: `Subtree: ${result.nodes[0].title} (${result.nodes.length} sections, ${totalWords} words)\n\n${formatted}`,
+            text: `Subtree: ${result.nodes[0].title} (${result.nodes.length} sections, ${totalWords} words)\n\n${capOutput(result.nodes, formatted, maxOutputChars())}`,
           },
         ],
       };

@@ -3,7 +3,7 @@
  *
  * Three improvements over raw result output:
  * 1. Facet badges on each result
- * 2. Auto-inlines full subtree content for top 3 results
+ * 2. Auto-inlines full subtree content for top N results (default 3, env-capped)
  * 3. Appends resolved cross-references after each inlined block
  */
 
@@ -20,7 +20,34 @@ export interface SubtreeProvider {
   getDocMeta(doc_id: string): DocumentMeta | null;
 }
 
-const INLINE_CONTENT_TOP_N = 3;
+export function envInt(name: string, fallback: number): number {
+  const v = parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(v) && v >= 0 ? v : fallback;
+}
+
+/**
+ * Token-budget guard shared by search inlining, get_node_content and navigate_tree.
+ * Over the cap: several nodes → outline with sizes (agent fetches the one it needs);
+ * one node → head of its text plus a truncation marker.
+ */
+export function capOutput(
+  nodes: Pick<TreeNode, "node_id" | "title" | "level" | "content">[],
+  full: string,
+  maxChars: number
+): string {
+  if (full.length <= maxChars) return full;
+  if (nodes.length > 1) {
+    const base = nodes[0].level;
+    const outline = nodes
+      .map((n) => `${"  ".repeat(Math.max(0, n.level - base))}[${n.node_id}] ${"#".repeat(n.level)} ${n.title} (${(n.content ?? "").length} chars)`)
+      .join("\n")
+      .slice(0, maxChars);
+    return `(${full.length} chars, over the ${maxChars}-char cap — outline only; fetch one node with get_node_content)\n${outline}`;
+  }
+  return `${full.slice(0, maxChars)}\n…[truncated: ${maxChars} of ${full.length} chars]`;
+}
+
+export const maxOutputChars = () => envInt("DOCTREE_MAX_OUTPUT_CHARS", Infinity);
 
 export function formatSearchResults(
   results: SearchResult[],
@@ -39,9 +66,11 @@ export function formatSearchResults(
     })
     .join("\n\n");
 
-  // 2. Full content blocks for top N
+  // 2. Full content blocks for top N (DOCTREE_INLINE_TOP_N, capped by DOCTREE_INLINE_MAX_CHARS)
+  const inlineTopN = envInt("DOCTREE_INLINE_TOP_N", 3);
+  const inlineMaxChars = envInt("DOCTREE_INLINE_MAX_CHARS", Infinity);
   const contentBlocks = results
-    .slice(0, INLINE_CONTENT_TOP_N)
+    .slice(0, inlineTopN)
     .map((r) => {
       const subtree = store.getSubtree(r.doc_id, r.node_id);
       if (!subtree || subtree.nodes.length === 0) return null;
@@ -63,7 +92,7 @@ export function formatSearchResults(
       const meta = store.getDocMeta(r.doc_id);
       const refLine = buildRefLine(meta?.references ?? [], store);
 
-      return `=== [${r.doc_id}] ${label} ===\n\n${formatted}${refLine}`;
+      return `=== [${r.doc_id}] ${label} ===\n\n${capOutput(subtree.nodes, formatted, inlineMaxChars)}${refLine}`;
     })
     .filter((b): b is string => b !== null);
 
@@ -72,7 +101,7 @@ export function formatSearchResults(
   ];
 
   if (contentBlocks.length > 0) {
-    const n = Math.min(results.length, INLINE_CONTENT_TOP_N);
+    const n = Math.min(results.length, inlineTopN);
     parts.push(
       `\n--- Full content (top ${n} match${n === 1 ? "" : "es"}) ---\n\n${contentBlocks.join("\n\n")}`
     );
