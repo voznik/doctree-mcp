@@ -95,6 +95,11 @@ async function main() {
 
       // MCP endpoint
       if (url.pathname === "/mcp") {
+        // Stateless: no server-initiated messages, so no standalone SSE stream (spec: 405).
+        // Clients like agy otherwise hold an idle GET that Bun drops → "unexpected EOF".
+        if (req.method === "GET") {
+          return new Response("Method Not Allowed", { status: 405, headers: { Allow: "POST" } });
+        }
         const server = createMcpServer(store, wiki);
         const transport = new WebStandardStreamableHTTPServerTransport({
           sessionIdGenerator: undefined, // stateless
