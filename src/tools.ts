@@ -555,7 +555,8 @@ function registerCurationTools(
             z.string(),
             z.number(),
             z.boolean(),
-            z.array(z.string()),
+            z.array(z.union([z.string(), z.record(z.union([z.string(), z.number(), z.boolean()]))])),
+            z.record(z.union([z.string(), z.number(), z.boolean()])),
           ])
         )
         .describe("Frontmatter key-value pairs"),

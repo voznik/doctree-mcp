@@ -112,6 +112,9 @@ export function formatSearchResults(
 
 function buildFacetBadge(facets: Record<string, string[]>): string {
   const parts: string[] = [];
+  if (facets["status"]?.[0] === "deprecated") parts.push("DEPRECATED");
+  if (facets["stale"]?.[0] === "true") parts.push("stale");
+  if (facets["trust"]?.[0] && facets["trust"][0] !== "human") parts.push(`trust: ${facets["trust"][0]}`);
   const langs = facets["code_languages"];
   if (langs?.length) parts.push(`code: ${langs.join(", ")}`);
   else if (facets["has_code"]?.[0] === "true") parts.push("has_code");

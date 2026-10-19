@@ -143,6 +143,8 @@ All non-reserved frontmatter fields become filter facets:
 search_documents("auth", filters: { type: "runbook", tags: ["production"] })
 ```
 
+**OKF** — docs following the [Open Knowledge Format](./docs/OKF.md) get `trust`/`stale`/`generated_by` facets, a `DEPRECATED` badge, and a ×0.5 rank for `status: deprecated`.
+
 **Common env vars:**
 
 | Variable | Default | Description |

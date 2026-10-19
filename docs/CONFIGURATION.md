@@ -95,6 +95,10 @@ category: auth       # any domain-specific grouping
 
 These are used internally and not exposed as filter facets: `title`, `description`, `layout`, `permalink`, `slug`, `draft`, `date`.
 
+### OKF keys
+
+`generated`, `stale_after` and `status: deprecated` produce derived facets, badges and a rank penalty. See [OKF.md](./OKF.md).
+
 ### Auto-inferred `type` from directory structure
 
 | Directory pattern | Inferred type |

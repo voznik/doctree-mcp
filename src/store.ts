@@ -651,6 +651,8 @@ export class DocumentStore {
         const colWeight =
           this.collectionWeights.get(doc.meta.collection) ?? 1.0;
         entry.score *= colWeight;
+        // OKF: a deprecated doc must not outrank its live replacement
+        if (doc.meta.facets["status"]?.[0] === "deprecated") entry.score *= 0.5;
       }
     }
 

@@ -292,7 +292,9 @@ export async function writeWikiEntry(
   const fmLines = ["---"];
   for (const [key, value] of Object.entries(input.frontmatter)) {
     if (Array.isArray(value)) {
-      fmLines.push(`${key}: [${value.map((v) => `"${v}"`).join(", ")}]`);
+      fmLines.push(`${key}: [${value.map((v) => (typeof v === "string" ? `"${v}"` : flowMap(v))).join(", ")}]`);
+    } else if (typeof value === "object" && value !== null) {
+      fmLines.push(`${key}: ${flowMap(value as Record<string, unknown>)}`);
     } else if (typeof value === "string") {
       fmLines.push(`${key}: "${value}"`);
     } else {
@@ -347,6 +349,21 @@ export async function writeWikiEntry(
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
+function isScalarMap(v: unknown): v is Record<string, string | number | boolean> {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    !Array.isArray(v) &&
+    Object.values(v).every(
+      (x) => (typeof x === "string" && !x.includes("\n")) || typeof x === "number" || typeof x === "boolean"
+    )
+  );
+}
+
+function flowMap(v: Record<string, unknown>): string {
+  return `{ ${Object.entries(v).map(([k, x]) => `${k}: ${x}`).join(", ")} }`;
+}
+
 function validateFrontmatter(fm: Record<string, unknown>): void {
   const keyPattern = /^[a-zA-Z][\w-]*$/;
   for (const [key, value] of Object.entries(fm)) {
@@ -364,6 +381,7 @@ function validateFrontmatter(fm: Record<string, unknown>): void {
     }
     if (Array.isArray(value)) {
       for (const item of value) {
+        if (isScalarMap(item)) continue; // OKF: list of mappings (e.g. sources)
         if (typeof item !== "string") {
           throw new CuratorError(
             "FRONTMATTER_INVALID",
@@ -384,6 +402,8 @@ function validateFrontmatter(fm: Record<string, unknown>): void {
           `Frontmatter values must not contain newlines. Key "${key}".`
         );
       }
+    } else if (isScalarMap(value)) {
+      // OKF: one-level mapping (e.g. generated: {by, at})
     } else if (
       typeof value !== "number" &&
       typeof value !== "boolean"

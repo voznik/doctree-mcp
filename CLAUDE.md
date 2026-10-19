@@ -101,6 +101,8 @@ This enables bidirectional query expansion: searching "CLI" also matches "comman
 - Comments reference design influences: PageIndex, Pagefind, Bun.markdown
 - Reserved frontmatter keys (not used as facets): title, description, layout, permalink, slug, draft, date
 
+OKF keys (`generated`, `stale_after`, `status: deprecated`) add derived facets (`trust`, `stale`, `generated_by`), result badges and a ×0.5 rank for deprecated docs — see `docs/OKF.md`.
+
 ## Frontmatter Best Practices for Indexed Docs
 
 For best search quality, markdown files should include:

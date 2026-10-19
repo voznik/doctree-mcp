@@ -169,6 +169,8 @@ When frontmatter is missing, doctree-mcp infers what it can:
 - **type**: Auto-inferred from directory name (`runbooks/` → `runbook`)
 - **Glossary**: Patterns like "TLS (Transport Layer Security)" are auto-extracted
 
+For OKF trust/lifecycle keys (`generated: { by, at }`, `stale_after`, `status: deprecated`), which `write_wiki_entry` can also write, see [OKF.md](./OKF.md).
+
 ---
 
 ## Example prompts

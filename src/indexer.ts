@@ -352,7 +352,38 @@ function extractFacets(frontmatter: Frontmatter): Record<string, string[]> {
     }
   }
 
+  addOkfFacets(frontmatter, facets);
   return facets;
+}
+
+// OKF v0.2 trust/lifecycle facets. The line parser keeps `generated: { by, at }`
+// as a flow-mapping string, so parse that one shape here.
+function parseFlowMap(v: unknown): Record<string, string> | null {
+  if (typeof v !== "string") return null;
+  const m = v.match(/^\{(.*)\}$/);
+  if (!m) return null;
+  const out: Record<string, string> = {};
+  for (const part of m[1].split(",")) {
+    const i = part.indexOf(":");
+    if (i > 0) out[part.slice(0, i).trim()] = part.slice(i + 1).trim().replace(/^['"]|['"]$/g, "");
+  }
+  return out;
+}
+
+function addOkfFacets(fm: Frontmatter, facets: Record<string, string[]>): void {
+  const generated = parseFlowMap(fm.generated);
+  if (generated) {
+    delete facets["generated"];
+    if (generated.by) facets["generated_by"] = [generated.by];
+  }
+  if (generated || fm.verified !== undefined) {
+    const human = fm.verified !== undefined || generated?.by?.startsWith("human:");
+    facets["trust"] = [human ? "human" : "machine"];
+  } else if (facets["type"]) {
+    facets["trust"] = ["unverified"];
+  }
+  const staleAfter = typeof fm.stale_after === "string" ? Date.parse(fm.stale_after) : NaN;
+  if (!Number.isNaN(staleAfter)) facets["stale"] = [String(Date.now() >= staleAfter)];
 }
 
 // ── Path-based type inference ───────────────────────────────────────
